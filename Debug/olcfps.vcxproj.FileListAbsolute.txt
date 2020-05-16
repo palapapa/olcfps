@@ -1,0 +1,2 @@
+D:\Desktop\C++\olcfps\Debug\olcfps.exe
+D:\Desktop\C++\olcfps\Debug\olcfps.pdb
