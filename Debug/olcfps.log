@@ -1,3 +1,3 @@
 ﻿  olcfps.cpp
-D:\Desktop\C++\olcfps\olcfps.cpp(109,31): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
+D:\Desktop\C++\olcfps\olcfps.cpp(141,31): warning C4244: 'initializing': conversion from 'double' to 'int', possible loss of data
   olcfps.vcxproj -> D:\Desktop\C++\olcfps\Debug\olcfps.exe

@@ -11,7 +11,7 @@ namespace constants
     constexpr int keyA = 0x41;
     constexpr int keyS = 0x53;
     constexpr int keyD = 0x44;
-    constexpr double rotateSpeed = 0.075 * M_PI / 180.0;//degrees per millisecond
+    constexpr double rotateSpeed = 0.15 * M_PI / 180.0;//degrees per millisecond
     constexpr double movementSpeedForward = 0.005;//units per millisecond
     constexpr double movementSpeedBackward = 0.005;//units per millisecond
     constexpr double fov = 90.0 * M_PI / 180.0;
@@ -65,11 +65,11 @@ int main()
         currentTime = std::chrono::system_clock::now();//updates to the current system time
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFrameTime).count();//gets how much time have elapsed in milliseconds
         lastFrameTime = currentTime;//copies the current system time for calculating the elapsed time when the next loop begins
-        if (GetAsyncKeyState(keyA))
+        if (GetAsyncKeyState(VK_LEFT))
         {
             yaw -= rotateSpeed * elapsedTime;//rotates counterclockwise //multiplied by `elapsedTime` to balance the amount that the player rotates
         }
-        if (GetAsyncKeyState(keyD))
+        if (GetAsyncKeyState(VK_RIGHT))
         {
             yaw += rotateSpeed * elapsedTime;//rotates clockwise
         }
@@ -78,12 +78,44 @@ int main()
             std::pair<double, double> unitVector(cos(yaw), sin(yaw));
             pos.first += unitVector.first * movementSpeedForward * elapsedTime;//move forward
             pos.second += unitVector.second * movementSpeedForward * elapsedTime;
+            if (map[(int)pos.second * mapSize.first + (int)pos.first] == '#')//if moving into a wall
+            {
+                pos.first -= unitVector.first * movementSpeedForward * elapsedTime;
+                pos.second -= unitVector.second * movementSpeedForward * elapsedTime;
+            }
         }
         if (GetAsyncKeyState(keyS))
         {
             std::pair<double, double> unitVector(cos(yaw), sin(yaw));
             pos.first -= unitVector.first * movementSpeedBackward * elapsedTime;//move backward
             pos.second -= unitVector.second * movementSpeedBackward * elapsedTime;
+            if (map[(int)pos.second * mapSize.first + (int)pos.first] == '#')//if moving into a wall
+            {
+                pos.first += unitVector.first * movementSpeedForward * elapsedTime;
+                pos.second += unitVector.second * movementSpeedForward * elapsedTime;
+            }
+        }
+        if (GetAsyncKeyState(keyA))
+        {
+            std::pair<double, double> unitVector(cos(yaw - (90.0 * M_PI / 180.0)), sin(yaw - (90.0 * M_PI / 180.0)));
+            pos.first += unitVector.first * movementSpeedForward * elapsedTime;//move forward
+            pos.second += unitVector.second * movementSpeedForward * elapsedTime;
+            if (map[(int)pos.second * mapSize.first + (int)pos.first] == '#')//if moving into a wall
+            {
+                pos.first -= unitVector.first * movementSpeedForward * elapsedTime;
+                pos.second -= unitVector.second * movementSpeedForward * elapsedTime;
+            }
+        }
+        if (GetAsyncKeyState(keyD))
+        {
+            std::pair<double, double> unitVector(cos(yaw + (90.0 * M_PI / 180.0)), sin(yaw + (90.0 * M_PI / 180.0)));
+            pos.first += unitVector.first * movementSpeedForward * elapsedTime;//move forward
+            pos.second += unitVector.second * movementSpeedForward * elapsedTime;
+            if (map[(int)pos.second * mapSize.first + (int)pos.first] == '#')//if moving into a wall
+            {
+                pos.first -= unitVector.first * movementSpeedForward * elapsedTime;
+                pos.second -= unitVector.second * movementSpeedForward * elapsedTime;
+            }
         }
         for (int x = 0; x < screenSize.first; x++)//scans horizontally
         {
@@ -159,6 +191,6 @@ int main()
             }
         }
         screen[screenSize.first * screenSize.second] = 0;//null terminating
-        WriteConsoleOutputCharacter(console, screen, screenSize.first * screenSize.second + 1, { 0, 0 }, &bytesWritten);//writes to console buffer
+        WriteConsoleOutputCharacterW(console, screen, screenSize.first * screenSize.second + 1, { 0, 0 }, &bytesWritten);//writes to console buffer
     }
 }
