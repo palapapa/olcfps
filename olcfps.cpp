@@ -6,10 +6,11 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+#include <fstream>
+#include <sstream>
 namespace constants
 {
-    constexpr std::pair<int, int> screenSize(160, 80);
-    constexpr std::pair<int, int> mapSize(24, 24);
+    constexpr std::pair<int, int> screenSize(160, 80); 
     constexpr int keyW = 0x57;
     constexpr int keyA = 0x41;
     constexpr int keyS = 0x53;
@@ -28,7 +29,8 @@ namespace player
 {
     std::pair<double, double> pos(3.0, 3.0);
     double yaw = 0.0;//the center of the player's vision in radians
-    std::string command{};
+    std::pair<int, int> mapSize(24, 24);
+    std::string command;
 }
 class Projectile
 {
@@ -36,7 +38,8 @@ public:
     std::pair<double, double> pos;
     double yaw;
     Projectile()
-        : pos(player::pos.first, player::pos.second), yaw(player::yaw)
+        : pos(player::pos.first, player::pos.second),
+          yaw(player::yaw)
         {}
 };
 using namespace constants;
@@ -47,31 +50,64 @@ int main()
     HANDLE console = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);//gets a handle to the console
     SetConsoleActiveScreenBuffer(console);//sets the `console` handle to the active handle
     DWORD bytesWritten = 0;//just something that the Windows API requires to write to the console buffer
+    std::wifstream mapStream;
+    mapStream.open("map.txt", std::ios::in);
     std::wstring map;//a unicode string representing the game map
-    map += L"########################";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......##########......#";
-    map += L"#......##########......#";
-    map += L"#......##########......#";
-    map += L"#......##########......#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"#......................#";
-    map += L"########################";
+    if (!mapStream)//if the map file fails to open
+    {
+        map += L"########################";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......##########......#";
+        map += L"#......##########......#";
+        map += L"#......##########......#";
+        map += L"#......##########......#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"#......................#";
+        map += L"########################";
+    }
+    else
+    {
+        std::wstring line;
+        while (std::getline(mapStream, line))//reads line by line
+        {
+            std::wistringstream iss(line);
+            std::wstring token;
+            std::vector<std::wstring> tokens;
+            while (iss >> token)//reads tokens for each line
+            {
+                tokens.push_back(token);
+            }
+            if (tokens.front() == L"MapSize")
+            {
+                mapSize.first = std::stoi(tokens.at(1));
+                mapSize.second = std::stoi(tokens.at(2));
+            }
+            else if (tokens.front() == L"StartPos")
+            {
+                pos.first = std::stod(tokens.at(1));
+                pos.second = std::stod(tokens.at(2));
+            }
+            else
+            {
+                map += line;
+            }
+        }
+    }
     std::vector<Projectile> projectiles;
     auto currentTime = std::chrono::system_clock::now();//this is set to the system time when the game loop begins
     auto lastFrameTime = currentTime;//this records the system time when the last game loop began
