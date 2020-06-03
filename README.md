@@ -1,0 +1,1 @@
+Use MS Gothic for proper display.
