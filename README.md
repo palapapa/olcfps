@@ -1,1 +1,1 @@
-Use MS Gothic for proper display.
+Use MS Gothic and set window size to 160x80 for proper display.
