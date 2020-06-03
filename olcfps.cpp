@@ -3,6 +3,9 @@
 #include <iostream>
 #include <cmath>
 #include <chrono>
+#include <vector>
+#include <algorithm>
+#include <string>
 namespace constants
 {
     constexpr std::pair<int, int> screenSize(160, 80);
@@ -11,9 +14,10 @@ namespace constants
     constexpr int keyA = 0x41;
     constexpr int keyS = 0x53;
     constexpr int keyD = 0x44;
-    constexpr double rotateSpeed = 0.15 * M_PI / 180.0;//degrees per millisecond
+    constexpr double rotateSpeed = 0.15 * M_PI / 180.0;//radians per millisecond
     constexpr double movementSpeedForward = 0.005;//units per millisecond
     constexpr double movementSpeedBackward = 0.005;//units per millisecond
+    constexpr double projectileSpeed = 0.01;//units per milisecond
     constexpr double fov = 90.0 * M_PI / 180.0;
     constexpr wchar_t fullShade = 0x2588;
     constexpr wchar_t darkShade = 0x2593;
@@ -23,8 +27,18 @@ namespace constants
 namespace player
 {
     std::pair<double, double> pos(3.0, 3.0);
-    double yaw = 0.0;//the center of the player's vision
+    double yaw = 0.0;//the center of the player's vision in radians
+    std::string command{};
 }
+class Projectile
+{
+public:
+    std::pair<double, double> pos;
+    double yaw;
+    Projectile()
+        : pos(player::pos.first, player::pos.second), yaw(player::yaw)
+        {}
+};
 using namespace constants;
 using namespace player;
 int main()
@@ -58,6 +72,7 @@ int main()
     map += L"#......................#";
     map += L"#......................#";
     map += L"########################";
+    std::vector<Projectile> projectiles;
     auto currentTime = std::chrono::system_clock::now();//this is set to the system time when the game loop begins
     auto lastFrameTime = currentTime;//this records the system time when the last game loop began
     while (1)
@@ -117,6 +132,34 @@ int main()
                 pos.second -= unitVector.second * movementSpeedForward * elapsedTime;
             }
         }
+        if (GetAsyncKeyState(VK_SPACE))
+        {
+            projectiles.push_back(Projectile());//adds a new projectile
+        }
+        if (GetAsyncKeyState(VK_OEM_3))//the ` key
+        {
+            std::getline(std::cin, command);
+        }
+        for (std::vector<Projectile>::iterator it = projectiles.begin(); it != projectiles.end(); it++)//move all existing projectiles forward
+        {
+            std::pair<double, double> unitVector(cos(it->yaw), sin(it->yaw));
+            it->pos.first += unitVector.first * projectileSpeed * elapsedTime;
+            it->pos.second += unitVector.second * projectileSpeed * elapsedTime;
+            /*
+            if (map.at((int)it->pos.second * mapSize.first + (int)it->pos.first) == '#')
+            {
+                projectiles.erase(it);
+            }
+            else
+            {
+                it++;
+            }
+            */
+        }
+        projectiles.erase(std::remove_if(projectiles.begin(),
+            projectiles.end(),
+            [&](auto x) {return map.at((int)x.pos.second * mapSize.first + (int)x.pos.first) == '#'; }),
+            projectiles.end());//remove all projectiles inside walls
         for (int x = 0; x < screenSize.first; x++)//scans horizontally
         {
             double rayYaw = (yaw - fov / 2) + ((double)x / (double)screenSize.first) * fov;//(the leftmost part of the player's vision) + (x/160 of the player's fov) //this basically casts 160 rays which scan across the player's vision
@@ -138,7 +181,7 @@ int main()
                     break;
                 }
             }
-            int ceilingEndPos = (screenSize.second / 2) - screenSize.second / distance;//the ceiling ends at `ceilingEndPos` - 1 //if the wall is 1 unit away there will be no ceiling at all
+            int ceilingEndPos = (int)((screenSize.second / 2) - screenSize.second / distance);//the ceiling ends at `ceilingEndPos` - 1 //if the wall is 1 unit away there will be no ceiling at all
             if (ceilingEndPos < 0)
             {
                 ceilingEndPos = 0;
@@ -186,6 +229,58 @@ int main()
                     else
                     {
                         screen[y * screenSize.first + x] = 'X';
+                    }
+                }
+            }
+            for (std::vector<Projectile>::iterator it = projectiles.begin(); it != projectiles.end(); it++)
+            {
+                double projectileYaw = it->yaw - player::yaw;//how much the projectile deviates from the center of the player's vision
+                double projectileDistance = sqrt(pow((player::pos.first - it->pos.first), 2) + pow((player::pos.second - it->pos.second), 2));
+                if (projectileDistance < 1)
+                {
+                    projectileDistance = 1;
+                }
+                if (projectileDistance < 0)
+                {
+                    continue;
+                }
+                double projectileRadius = screenSize.second / 2 / projectileDistance;//the size of the projectile projection on the screen
+                int screenCenter = screenSize.first * screenSize.second / 2 + screenSize.second / 2;//the index of the center point of the screen
+                if (!(projectileYaw * 180 / M_PI > fov * 180 / M_PI / 2 || projectileYaw * 180 / M_PI < -(fov * 180 / M_PI / 2)))//if not out of the player's vision
+                {
+                    //screen[screenSize.first * (screenSize.second / 2) + (screenSize.first / 2)] = '+';
+                    #if 0
+                    for (int x = 0; x < screenSize.first; x++)
+                    {
+                        for (int y = 0; y < screenSize.second; y++)
+                        {
+                            if ((double)sqrt(pow(x - screenCenter, 2)) + pow(y - screenCenter, 2) <= projectileRadius)
+                            {
+                                screen[y * screenSize.first + x] = '+';
+                            }
+                        }
+                    }
+                    #endif
+                    if (projectileDistance < 4)//draw a 3*3 square
+                    {
+                        for (int i = x - 1; i < x + 1; i++)
+                        {
+                            for (int j = screenSize.second / 2 - 1; j < screenSize.second / 2 + 1; j++)
+                            {
+                                if (!(i < 0 || i >= screenSize.first || j < 0 || j >= screenSize.second))//if not out of bound
+                                {
+                                    screen[i * screenSize.first + j] = '+';
+                                }
+                            }
+                        }
+                    }
+                    else if (4 <= projectileDistance && projectileDistance < 8)
+                    {
+
+                    }
+                    else
+                    {
+
                     }
                 }
             }
