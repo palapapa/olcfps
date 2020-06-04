@@ -113,9 +113,17 @@ int main()
     auto lastFrameTime = currentTime;//this records the system time when the last game loop began
     while (1)
     {
+        static int frameCount;
+        frameCount++;
         currentTime = std::chrono::system_clock::now();//updates to the current system time
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFrameTime).count();//gets how much time have elapsed in milliseconds
         lastFrameTime = currentTime;//copies the current system time for calculating the elapsed time when the next loop begins
+        if (frameCount % 10 == 0)
+        {
+            std::ostringstream oss;
+            oss << "palapapa's FPS " << "X=" << player::pos.first << " Y=" << player::pos.second << " FPS=" << (int)(1000.0 / elapsedTime) << " Frame=" << frameCount;
+            SetConsoleTitleA(oss.str().c_str());
+        }
         if (GetAsyncKeyState(VK_LEFT))
         {
             yaw -= rotateSpeed * elapsedTime;//rotates counterclockwise //multiplied by `elapsedTime` to balance the amount that the player rotates
@@ -325,53 +333,3 @@ int main()
         WriteConsoleOutputCharacterW(console, screen, screenSize.first * screenSize.second + 1, { 0, 0 }, &bytesWritten);//writes to console buffer
     }
 }
-/*
-########################
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......##########......#
-#......##########......#
-#......##########......#
-#......##########......#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-##########...###########
-##########...###########
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......##########......#
-#......##########......#
-#......##########......#
-#......##########......#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-#......................#
-########################
-*/
