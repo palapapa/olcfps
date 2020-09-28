@@ -9,11 +9,11 @@
 #include <string>
 #include <fstream>
 #include <sstream>
-#include <map>
+#include <unordered_map>
 #include <limits>
 namespace constants
 {
-    constexpr std::pair<int, int> screenSize(160, 80); 
+    constexpr std::pair<int, int> screenSize(160, 80);
     constexpr int keyW = 0x57;
     constexpr int keyA = 0x41;
     constexpr int keyS = 0x53;
@@ -43,31 +43,31 @@ public:
         isConsoleOpen(true)
     {}
 };
-class projectile
+class Projectile
 {
 public:
     std::pair<double, double> pos;
     double yaw;
-    projectile(const std::pair<double, double> pos, const double yaw) :
+    Projectile(const std::pair<double, double> pos, const double yaw) :
         pos(pos),
         yaw(yaw)
     {}
 };
-class editor_state
+class EditorState
 {
 public:
     std::wstring map;
     std::pair<int, int> mapSize;
     std::pair<double, double> startPos;
     std::wstring message;
-    editor_state(const std::wstring map, const std::pair<int, int> mapSize, const std::pair<double, double> startPos, const std::wstring message) :
+    EditorState(const std::wstring map, const std::pair<int, int> mapSize, const std::pair<double, double> startPos, const std::wstring message) :
         map(map),
         mapSize(mapSize),
         startPos(startPos),
         message(message)
     {}
 };
-enum class commands
+enum class Commands
 {
     wall,
     undo,
@@ -79,18 +79,18 @@ enum class commands
     space,
     unknown
 };
-commands get_command_enum(std::wstring command)
+Commands get_command_enum(std::wstring command)
 {
-    static const std::map<std::wstring, commands> commandsMap
+    static const std::unordered_map<std::wstring, Commands> commandsMap
     {
-        {L"wall", commands::wall},
-        {L"undo", commands::undo},
-        {L"redo", commands::redo},
-        {L"help", commands::help},
-        {L"save", commands::save},
-        {L"size", commands::size},
-        {L"start", commands::start},
-        {L"space", commands::space}
+        {L"wall", Commands::wall},
+        {L"undo", Commands::undo},
+        {L"redo", Commands::redo},
+        {L"help", Commands::help},
+        {L"save", Commands::save},
+        {L"size", Commands::size},
+        {L"start", Commands::start},
+        {L"space", Commands::space}
     };
     auto it = commandsMap.find(command);
     if (it != commandsMap.end())
@@ -99,13 +99,13 @@ commands get_command_enum(std::wstring command)
     }
     else
     {
-        return commands::unknown;
+        return Commands::unknown;
     }
 }
 using namespace constants;
 void gotoxy(short x, short y)
 {
-    COORD pos = {x, y};
+    COORD pos = { x, y };
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
 }
 void start_game()
@@ -185,7 +185,7 @@ void start_game()
             }
         }
     }
-    std::vector<projectile> projectiles;
+    std::vector<Projectile> projectiles;
     auto currentTime = std::chrono::system_clock::now();//this is set to the system time when the game loop begins
     auto lastFrameTime = currentTime;//this records the system time when the last game loop began
     while (1)
@@ -260,13 +260,13 @@ void start_game()
         }
         if (GetAsyncKeyState(VK_SPACE))
         {
-            projectiles.push_back(projectile(gameInfo.playerPos, gameInfo.playerYaw));//adds a new projectile
+            projectiles.push_back(Projectile(gameInfo.playerPos, gameInfo.playerYaw));//adds a new projectile
         }
         if (GetAsyncKeyState(VK_OEM_3))//the ` key
         {
             gameInfo.isConsoleOpen = true;
         }
-        for (std::vector<projectile>::iterator it = projectiles.begin(); it != projectiles.end(); it++)//move all existing projectiles forward
+        for (std::vector<Projectile>::iterator it = projectiles.begin(); it != projectiles.end(); it++)//move all existing projectiles forward
         {
             std::pair<double, double> unitVector(cos(it->yaw), sin(it->yaw));
             it->pos.first += unitVector.first * projectileSpeed * elapsedTime;
@@ -282,9 +282,11 @@ void start_game()
             }
             */
         }
-        projectiles.erase(std::remove_if(projectiles.begin(),
-            projectiles.end(),
-            [&](auto x) {return map.at((int)x.pos.second * gameInfo.mapSize.first + (int)x.pos.first) == '#';}),
+        projectiles.erase(
+            std::remove_if(
+                projectiles.begin(),
+                projectiles.end(),
+                [&](auto x) {return map.at((int)x.p.second * gameInfo.mapSize.first + (int)x.pos.first) == '#'; }),
             projectiles.end());//remove all projectiles inside walls
         for (int x = 0; x < screenSize.first; x++)//scans horizontally
         {
@@ -384,8 +386,8 @@ void start_game()
                             {
                                 screen[y * screenSize.first + x] = '+';
                             }
-                        }
-                    }
+            }
+        }
 #endif
                     if (projectileDistance < 4)//draw a 3*3 square
                     {
@@ -402,14 +404,12 @@ void start_game()
                     }
                     else if (4 <= projectileDistance && projectileDistance < 8)
                     {
-
                     }
                     else
                     {
-
                     }
-                }
-            }
+    }
+}
         }
         screen[screenSize.first * screenSize.second] = 0;//null terminating
         WriteConsoleOutputCharacterW(console, screen, screenSize.first * screenSize.second + 1, { 0, 0 }, &bytesWritten);//writes to console buffer
@@ -419,7 +419,7 @@ void start_editor()
 {
     system("cls");
     std::wstring input;
-    std::vector<editor_state> editorStates;//used for undo and redo
+    std::vector<EditorState> editorStates;//used for undo and redo
     std::wfstream mapStream;
     std::pair<int, int> mapSize(0, 0);
     std::pair<double, double> startPos(0, 0);
@@ -543,7 +543,7 @@ void start_editor()
             std::wcin.clear();
             continue;
         }
-        editorStates.push_back(editor_state(map, mapSize, startPos, message));
+        editorStates.push_back(EditorState(map, mapSize, startPos, message));
         std::wistringstream inputWiss(input);
         std::wstring token;
         std::vector<std::wstring> tokens;
@@ -559,7 +559,7 @@ void start_editor()
         {
             switch (get_command_enum(tokens.front()))
             {
-            case commands::wall :
+            case Commands::wall:
                 if (tokens.size() == 1)//no arguments
                 {
                     //enclose the map with walls
@@ -567,7 +567,6 @@ void start_editor()
                     {
                         map.at(x) = '#';//horizontal first row
                         map.at(mapSize.first * (mapSize.second - 1) + x) = '#';//horizontal last row
-                        
                     }
                     for (int y = 0; y < mapSize.second; y++)
                     {
@@ -584,7 +583,17 @@ void start_editor()
                     {
                         int x = std::stoi(tokens.at(1));
                         int y = std::stoi(tokens.at(2));
-                        map.at(y *mapSize.first + x) = '#';
+                        if (x > mapSize.first ||
+                            x < 0 ||
+                            y > mapSize.second ||
+                            y < 0)//if coords are out of bounds
+                        {
+                            std::wstringstream messageWss;
+                            messageWss << "Coordinates are out of bounds\n";
+                            message = messageWss.str();
+                            break;
+                        }
+                        map.at(y * mapSize.first + x) = '#';
                         std::wstringstream messageWss;
                         messageWss << "Turned block at (" << x << ", " << y << ") into wall\n";
                         message = messageWss.str();
@@ -653,7 +662,7 @@ void start_editor()
                     message = messageWss.str();
                 }
                 break;
-            case commands::size :
+            case Commands::size:
                 if (tokens.size() == 3)
                 {
                     try
@@ -682,7 +691,6 @@ void start_editor()
                         }
                         else if (newX * newY < previousX * previousY)//if the altered map size is smaller than the original one
                         {
-
                         }
                         std::wstringstream messageWss;
                         messageWss << "Changed map size to (" << newX << ", " << newY << ")\n";
@@ -703,7 +711,7 @@ void start_editor()
                     message = messageWss.str();
                 }
                 break;
-            case commands::unknown :
+            case Commands::unknown:
                 std::wstringstream messageWss;
                 messageWss << "Bruh not a valid command(enter \'help\' for help)\n";
                 message = messageWss.str();
@@ -714,7 +722,6 @@ void start_editor()
 }
 void start_visual_editor()
 {
-
 }
 int main()
 {
